@@ -9,7 +9,6 @@ import (
 	"github.com/calehh/hac-app/crypto"
 	"github.com/calehh/hac-app/tx"
 	"github.com/cometbft/cometbft/rpc/client/http"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 )
 
@@ -112,7 +111,7 @@ func grantRun(cmd *cobra.Command, args []string) {
 		return
 	}
 	btx.Sig = sigs
-	dat, err = rlp.EncodeToBytes(btx)
+	dat, err = json.Marshal(btx)
 	if err != nil {
 		fmt.Printf("rlp encode tx err:%v\n", err)
 		return

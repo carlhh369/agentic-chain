@@ -43,16 +43,6 @@ const (
 	HACTxVersion1 uint8 = 1
 )
 
-const (
-	HACTxCompressTypeNone HACTxCompressType = 0
-	HACTxCompressTypeGZ   HACTxCompressType = 1
-)
-
-const (
-	HACTxEncodingTypeUnknown = 0
-	HACTxEncodingTypeRLP     = 1
-)
-
 var (
 	ErrInvalidTx         = errors.New("invalid tx")
 	ErrUnsupportedTxType = errors.New("unsupported tx type")

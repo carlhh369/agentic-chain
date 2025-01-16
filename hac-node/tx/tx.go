@@ -2,8 +2,7 @@ package tx
 
 import (
 	"bytes"
-
-	"github.com/ethereum/go-ethereum/rlp"
+	"encoding/json"
 )
 
 type HACTx struct {
@@ -63,7 +62,7 @@ type hacTxTmpl[Tx any] struct {
 func (tx *HACTx) SigData(ext []byte) (dat []byte, err error) {
 	ntx := *tx
 	ntx.Sig = [][]byte{ext}
-	dat, err = rlp.EncodeToBytes(ntx)
+	dat, err = json.Marshal(ntx)
 	return
 }
 
@@ -83,7 +82,7 @@ func parseHACTxType(dat []byte) HACTxType {
 
 func unmarshalHACTx[Tx any](dat []byte) (btx *HACTx, err error) {
 	var txt hacTxTmpl[Tx]
-	err = rlp.DecodeBytes(dat, &txt)
+	err = json.Unmarshal(dat, &txt)
 	if err != nil {
 		return
 	}
@@ -117,5 +116,5 @@ func UnmarshalHACTx(dat []byte) (btx *HACTx, err error) {
 }
 
 func MarshalHACTx(btx *HACTx) (dat []byte, err error) {
-	return rlp.EncodeToBytes(btx)
+	return json.Marshal(btx)
 }
