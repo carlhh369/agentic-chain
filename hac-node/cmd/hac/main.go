@@ -14,6 +14,7 @@ func main() {
 	clCmd.AddCommand(settleCmd)
 	clCmd.AddCommand(grantCmd)
 	clCmd.AddCommand(pubkeyCmd)
+	clCmd.AddCommand(signCmd)
 	if err := clCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

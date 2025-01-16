@@ -20,6 +20,8 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
+var ElizaCli *ElizaClient
+
 type Client interface {
 	IfProcessProposal(ctx context.Context, proposer uint64, data []byte) (bool, error)
 	IfAcceptProposal(ctx context.Context, proposal uint64, voter string) (bool, error)
@@ -36,6 +38,51 @@ type ElizaClient struct {
 	url     string
 	agentId string
 	logger  cmtlog.Logger
+}
+
+func NewElizaClient(url string, logger cmtlog.Logger) (*ElizaClient, error) {
+	l := logger.With("module", "eliza")
+	client := &ElizaClient{
+		url:    url,
+		logger: l,
+	}
+	ids, err := client.GetAgentIds(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, errors.New("no agent id")
+	}
+	client.agentId = ids[0]
+	return client, nil
+}
+
+func (e *ElizaClient) GetAgentIds(ctx context.Context) ([]string, error) {
+	url := fmt.Sprintf("%s/agents", e.url)
+	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	var agents struct {
+		Agents []struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"agents"`
+	}
+	err = json.Unmarshal(bodyBytes, &agents)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(agents.Agents))
+	for _, ag := range agents.Agents {
+		ids = append(ids, ag.Id)
+	}
+	return ids, nil
 }
 
 func (e *ElizaClient) IfGrantNewMember(ctx context.Context, validator uint64, proposer string, amount uint64, statement string) (bool, error) {
@@ -65,7 +112,7 @@ func (e *ElizaClient) IfGrantNewMember(ctx context.Context, validator uint64, pr
 }
 
 func (e *ElizaClient) CommentPropoal(ctx context.Context, proposal uint64, speaker string) (string, error) {
-	url := fmt.Sprintf("%s/%s/discussion", e.url, e.agentId)
+	url := fmt.Sprintf("%s/%s/newdiscussion", e.url, e.agentId)
 	body := fmt.Sprintf(`{"proposalId":"%d","validatorAddress":"%s","text":"comment"}`, proposal, speaker)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(body)))
 	if err != nil {
@@ -81,7 +128,7 @@ func (e *ElizaClient) CommentPropoal(ctx context.Context, proposal uint64, speak
 }
 
 func (e *ElizaClient) AddDiscussion(ctx context.Context, proposal uint64, speaker string, text string) error {
-	url := fmt.Sprintf("%s/%s/newdiscussion", e.url, e.agentId)
+	url := fmt.Sprintf("%s/%s/discussion", e.url, e.agentId)
 	body := fmt.Sprintf(`{"proposalId":"%d","validatorAddress":"%s","text":"%s"}`, proposal, speaker, text)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(body)))
 	if err != nil {
@@ -175,11 +222,12 @@ type ChainIndexer struct {
 	db            *gorm.DB
 	cli           *comethttp.HTTP
 	eventHandlers map[string]eventHandler
+	eliza         *ElizaClient
 }
 
-func NewChainIndexer(logger cmtlog.Logger, dbPath string, url string) (*ChainIndexer, error) {
-	logger.Info("NewChainIndexer", "dbPath", dbPath, "url", url)
-	cli, err := comethttp.New(url, "/websocket")
+func NewChainIndexer(logger cmtlog.Logger, dbPath string, chainUrl string, elizaUrl string) (*ChainIndexer, error) {
+	logger.Info("NewChainIndexer", "dbPath", dbPath, "url", chainUrl)
+	cli, err := comethttp.New(chainUrl, "/websocket")
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +244,7 @@ func NewChainIndexer(logger cmtlog.Logger, dbPath string, url string) (*ChainInd
 	}
 	c := ChainIndexer{
 		logger:        logger.With("module", "indexer"),
-		Url:           url,
+		Url:           chainUrl,
 		Height:        int64(h.Height + 1),
 		db:            db,
 		cli:           cli,
@@ -255,6 +303,10 @@ func (c *ChainIndexer) handleEventDiscussion(ctx context.Context, event abci.Eve
 	if err := c.db.Save(&discusstion).Error; err != nil {
 		c.logger.Error("save discusstion fail", "err", err)
 	}
+	err := ElizaCli.AddDiscussion(ctx, ev.Proposal, ev.SpeakerAddress, string(ev.Data))
+	if err != nil {
+		c.logger.Error("add discussion fail", "err", err)
+	}
 }
 
 func (c *ChainIndexer) handleEventSettleProposal(ctx context.Context, event abci.Event, height int64) {
@@ -291,6 +343,16 @@ func (c *ChainIndexer) handleEventProposal(ctx context.Context, event abci.Event
 	}
 	if err := c.db.Save(&proposal).Error; err != nil {
 		c.logger.Error("save proposal fail", "err", err)
+	}
+	err := ElizaCli.AddProposal(ctx, ev.ProposalIndex, ev.ProposerAddress, string(ev.Data))
+	if err != nil {
+		c.logger.Error("add proposal fail", "err", err)
+	}
+	comment, err := ElizaCli.CommentPropoal(ctx, ev.ProposalIndex, ev.ProposerAddress)
+	if err != nil {
+		c.logger.Error("comment proposal fail", "err", err)
+	} else {
+		c.logger.Info("comment proposal", "comment", comment)
 	}
 }
 
