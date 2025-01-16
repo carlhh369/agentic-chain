@@ -120,7 +120,12 @@ func run(cmd *cobra.Command, args []string) {
 	}
 	rpcUrl.Scheme = "http"
 	dbPath := path.Join(appConfig.RootDir, "indexer.db")
-	indexer, err := agent.NewChainIndexer(logger, dbPath, rpcUrl.String(), "")
+	indexer, err := agent.NewChainIndexer(logger, dbPath, rpcUrl.String())
+	agent.ElizaCli = &agent.ElizaClient{
+		Url:     "",
+		AgentId: "",
+		Logger:  logger,
+	}
 	if err != nil {
 		log.Fatalf("new chain indexer err %s", err.Error())
 	}

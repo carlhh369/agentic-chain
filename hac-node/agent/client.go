@@ -35,16 +35,16 @@ var _ Client = &MockClient{}
 var _ Client = &ElizaClient{}
 
 type ElizaClient struct {
-	url     string
-	agentId string
-	logger  cmtlog.Logger
+	Url     string
+	AgentId string
+	Logger  cmtlog.Logger
 }
 
 func NewElizaClient(url string, logger cmtlog.Logger) (*ElizaClient, error) {
 	l := logger.With("module", "eliza")
 	client := &ElizaClient{
-		url:    url,
-		logger: l,
+		Url:    url,
+		Logger: l,
 	}
 	ids, err := client.GetAgentIds(context.Background())
 	if err != nil {
@@ -53,12 +53,12 @@ func NewElizaClient(url string, logger cmtlog.Logger) (*ElizaClient, error) {
 	if len(ids) == 0 {
 		return nil, errors.New("no agent id")
 	}
-	client.agentId = ids[0]
+	client.AgentId = ids[0]
 	return client, nil
 }
 
 func (e *ElizaClient) GetAgentIds(ctx context.Context) ([]string, error) {
-	url := fmt.Sprintf("%s/agents", e.url)
+	url := fmt.Sprintf("%s/agents", e.Url)
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (e *ElizaClient) GetAgentIds(ctx context.Context) ([]string, error) {
 }
 
 func (e *ElizaClient) IfGrantNewMember(ctx context.Context, validator uint64, proposer string, amount uint64, statement string) (bool, error) {
-	url := fmt.Sprintf("%s/%s/votegrant", e.url, e.agentId)
+	url := fmt.Sprintf("%s/%s/votegrant", e.Url, e.AgentId)
 	body := fmt.Sprintf(`{"grantId":"%d","validatorAddress":"%s","text":"%s"}`, validator, proposer, statement)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(body)))
 	if err != nil {
@@ -95,16 +95,16 @@ func (e *ElizaClient) IfGrantNewMember(ctx context.Context, validator uint64, pr
 	defer res.Body.Close()
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		e.logger.Error("read response body fail", "err", err)
+		e.Logger.Error("read response body fail", "err", err)
 		return false, err
 	}
 	var vote VoteResponse
 	err = json.Unmarshal(bodyBytes, &vote)
 	if err != nil {
-		e.logger.Error("unmarshal response body fail", "err", err)
+		e.Logger.Error("unmarshal response body fail", "err", err)
 		return false, err
 	}
-	e.logger.Info("vote grant", "validator", validator, "proposer", proposer, "vote", vote.Vote, "reason", vote.Reason)
+	e.Logger.Info("vote grant", "validator", validator, "proposer", proposer, "vote", vote.Vote, "reason", vote.Reason)
 	if vote.Vote == "yes" {
 		return true, nil
 	}
@@ -112,7 +112,7 @@ func (e *ElizaClient) IfGrantNewMember(ctx context.Context, validator uint64, pr
 }
 
 func (e *ElizaClient) CommentPropoal(ctx context.Context, proposal uint64, speaker string) (string, error) {
-	url := fmt.Sprintf("%s/%s/newdiscussion", e.url, e.agentId)
+	url := fmt.Sprintf("%s/%s/newdiscussion", e.Url, e.AgentId)
 	body := fmt.Sprintf(`{"proposalId":"%d","validatorAddress":"%s","text":"comment"}`, proposal, speaker)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(body)))
 	if err != nil {
@@ -121,14 +121,14 @@ func (e *ElizaClient) CommentPropoal(ctx context.Context, proposal uint64, speak
 	defer res.Body.Close()
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		e.logger.Error("read response body fail", "err", err)
+		e.Logger.Error("read response body fail", "err", err)
 		return "", err
 	}
 	return string(bodyBytes), nil
 }
 
 func (e *ElizaClient) AddDiscussion(ctx context.Context, proposal uint64, speaker string, text string) error {
-	url := fmt.Sprintf("%s/%s/discussion", e.url, e.agentId)
+	url := fmt.Sprintf("%s/%s/discussion", e.Url, e.AgentId)
 	body := fmt.Sprintf(`{"proposalId":"%d","validatorAddress":"%s","text":"%s"}`, proposal, speaker, text)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(body)))
 	if err != nil {
@@ -139,7 +139,7 @@ func (e *ElizaClient) AddDiscussion(ctx context.Context, proposal uint64, speake
 }
 
 func (e *ElizaClient) AddProposal(ctx context.Context, proposal uint64, proposer string, text string) error {
-	url := fmt.Sprintf("%s/%s/proposal", e.url, e.agentId)
+	url := fmt.Sprintf("%s/%s/proposal", e.Url, e.AgentId)
 	body := fmt.Sprintf(`{"proposalId":"%d","validatorAddress":"%s","text":"%s"}`, proposal, proposer, text)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(body)))
 	if err != nil {
@@ -155,7 +155,7 @@ type VoteResponse struct {
 }
 
 func (e *ElizaClient) IfAcceptProposal(ctx context.Context, proposal uint64, voter string) (bool, error) {
-	url := fmt.Sprintf("%s/%s/voteproposal", e.url, e.agentId)
+	url := fmt.Sprintf("%s/%s/voteproposal", e.Url, e.AgentId)
 	body := fmt.Sprintf(`{"proposalId":"%d","validatorAddress":"%s","text":"analyze proposal"}`, proposal, voter)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(body)))
 	if err != nil {
@@ -164,16 +164,16 @@ func (e *ElizaClient) IfAcceptProposal(ctx context.Context, proposal uint64, vot
 	defer res.Body.Close()
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		e.logger.Error("read response body fail", "err", err)
+		e.Logger.Error("read response body fail", "err", err)
 		return false, err
 	}
 	var vote VoteResponse
 	err = json.Unmarshal(bodyBytes, &vote)
 	if err != nil {
-		e.logger.Error("unmarshal response body fail", "err", err)
+		e.Logger.Error("unmarshal response body fail", "err", err)
 		return false, err
 	}
-	e.logger.Info("vote proposal", "proposal", proposal, "voter", voter, "vote", vote.Vote, "reason", vote.Reason)
+	e.Logger.Info("vote proposal", "proposal", proposal, "voter", voter, "vote", vote.Vote, "reason", vote.Reason)
 	if vote.Vote == "yes" {
 		return true, nil
 	}
@@ -225,7 +225,7 @@ type ChainIndexer struct {
 	eliza         *ElizaClient
 }
 
-func NewChainIndexer(logger cmtlog.Logger, dbPath string, chainUrl string, elizaUrl string) (*ChainIndexer, error) {
+func NewChainIndexer(logger cmtlog.Logger, dbPath string, chainUrl string) (*ChainIndexer, error) {
 	logger.Info("NewChainIndexer", "dbPath", dbPath, "url", chainUrl)
 	cli, err := comethttp.New(chainUrl, "/websocket")
 	if err != nil {
