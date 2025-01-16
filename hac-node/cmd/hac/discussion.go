@@ -80,6 +80,7 @@ func discussionRun(cmd *cobra.Command, args []string) {
 		fmt.Printf("tx sign data err:%v\n", err)
 		return
 	}
+	println("data to sign:", string(dat))
 	println("data signed:", hex.EncodeToString(dat))
 	sigs := [][]byte{}
 	pv := crypto.LoadFilePV(discussionArgs.Skey)
