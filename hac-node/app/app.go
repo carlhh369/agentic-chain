@@ -27,7 +27,7 @@ func (b *finalizeBlock) Set(blk *abcitypes.RequestFinalizeBlock) {
 var _ abcitypes.Application = &HACApp{}
 
 type HACApp struct {
-	cfg    *config.HacHACAppConfig
+	cfg    *config.HACAppConfig
 	logger cmtlog.Logger
 
 	db       *state.StateDB
@@ -39,7 +39,7 @@ type HACApp struct {
 	st *state.State
 }
 
-func NewHACApp(cfg *config.HacHACAppConfig, logger cmtlog.Logger) (app *HACApp, err error) {
+func NewHACApp(cfg *config.HACAppConfig, agentClient agent.Client, logger cmtlog.Logger) (app *HACApp, err error) {
 	logger = logger.With("module", "app")
 
 	dir := cfg.Home + "/data"
@@ -54,7 +54,7 @@ func NewHACApp(cfg *config.HacHACAppConfig, logger cmtlog.Logger) (app *HACApp, 
 		db:       db,
 		txHdlrs:  make(map[tx.HACTxType]handler.TxHandler),
 		queriers: make(map[string]Querier),
-		agentCli: agent.NewMockClient(),
+		agentCli: agentClient,
 	}
 	app.registerTxHandler()
 	app.registerQuerier()

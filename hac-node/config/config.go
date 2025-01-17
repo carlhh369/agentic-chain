@@ -14,20 +14,23 @@ import (
 	eth_crypto "github.com/ethereum/go-ethereum/crypto"
 )
 
-type HacHACAppConfig struct {
+type HACAppConfig struct {
 	Home          string `mapstructure:"-"`
 	TimeoutCommit uint64 `mapstructure:"-"`
+	AgentUrl      string `mapstructure:"agent_url"`
 }
 
-func DefaultHACAppConfig(home string) *HacHACAppConfig {
-	return &HacHACAppConfig{
-		Home: home,
+func DefaultHACAppConfig(home string) *HACAppConfig {
+	return &HACAppConfig{
+		Home:     home,
+		AgentUrl: "http://127.0.0.1:3000",
 	}
 
 }
-func NewHACAppConfig(home string) *HacHACAppConfig {
-	return &HacHACAppConfig{
+func NewHACAppConfig(home string) *HACAppConfig {
+	return &HACAppConfig{
 		Home: home,
+		AgentUrl: "http://127.0.0.1:3000",
 	}
 }
 
@@ -42,7 +45,7 @@ func PowerPerStake(stake uint64, height uint64) int64 {
 type Config struct {
 	*config.Config `mapstructure:",squash"`
 
-	App *HacHACAppConfig `mapstructure:"app"`
+	App *HACAppConfig `mapstructure:"app"`
 }
 
 func DefaultConfig(home string) *Config {

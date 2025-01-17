@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"strings"
 	"syscall"
 	"time"
 
@@ -81,9 +82,17 @@ func run(cmd *cobra.Command, args []string) {
 		log.Fatalf("failed to parse log level: %v", err)
 	}
 
+	//new agent client
+	agentUrl := strings.TrimRight(appConfig.App.AgentUrl, "/")
+	logger.Info("agent url: %s", agentUrl)
+	agent.ElizaCli, err = agent.NewElizaClient(agentUrl, logger)
+	if err != nil {
+		log.Fatalf("new eliza client err %s", err.Error())
+	}
+
 	appConfig.App.Home = homeDir
 	appConfig.App.TimeoutCommit = uint64(appConfig.Consensus.TimeoutCommit.Seconds())
-	app, err := app.NewHACApp(appConfig.App, logger)
+	app, err := app.NewHACApp(appConfig.App, agent.ElizaCli, logger)
 	if err != nil {
 		log.Fatalf("new App err:%v", err)
 	}
@@ -121,11 +130,6 @@ func run(cmd *cobra.Command, args []string) {
 	rpcUrl.Scheme = "http"
 	dbPath := path.Join(appConfig.RootDir, "indexer.db")
 	indexer, err := agent.NewChainIndexer(logger, dbPath, rpcUrl.String())
-	agent.ElizaCli = &agent.ElizaClient{
-		Url:     "",
-		AgentId: "",
-		Logger:  logger,
-	}
 	if err != nil {
 		log.Fatalf("new chain indexer err %s", err.Error())
 	}
